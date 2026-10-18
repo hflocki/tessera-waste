@@ -1,0 +1,7 @@
+# What a screen gets when it takes this plugin. Tessera includes this file from the screen's <name>.plugins.yaml with
+# CALENDAR filled in (the input chosen when the plugin was added), and adds the components folder beside it.
+defaults:
+  CALENDAR: calendar.waste
+
+waste_overview:
+  calendar: ${CALENDAR}

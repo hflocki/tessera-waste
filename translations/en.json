@@ -1,0 +1,36 @@
+{
+  "_meta": {
+    "name": "English"
+  },
+  "screen": {
+    "today": "Today",
+    "choose": "Choose a calendar",
+    "waiting": "Asking the calendar",
+    "failed": "The calendar did not answer",
+    "none": "Nothing planned"
+  },
+  "app": {
+    "name": "Waste overview",
+    "summary": "Every kind of waste side by side, with how many days until it goes out, from a calendar.",
+    "input_calendar": "Waste calendar",
+    "input_calendar_hint": "The calendar with the collection days (Waste Collection Schedule, a local calendar, ...).",
+    "tile_name": "Waste overview",
+    "tile_example": "Paper in 2 days · Residual in 9 days",
+    "days": "Days ahead",
+    "days_hint": "How far ahead to look for collections.",
+    "drop_after": "Today's collection until",
+    "drop_after_hint": "From this hour on, a collection of today makes way for the next one of its kind. 24 keeps it all day.",
+    "match1": "Kind 1: word",
+    "match_hint": "A word in the calendar's event, such as Papier or Gelber. Leave all kinds empty to show every event name as a kind of its own.",
+    "label1": "Kind 1: name",
+    "label_hint": "What the tile calls it. Empty takes the event's name.",
+    "match2": "Kind 2: word",
+    "label2": "Kind 2: name",
+    "match3": "Kind 3: word",
+    "label3": "Kind 3: name",
+    "match4": "Kind 4: word",
+    "label4": "Kind 4: name",
+    "match5": "Kind 5: word",
+    "label5": "Kind 5: name"
+  }
+}

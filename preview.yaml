@@ -1,0 +1,32 @@
+# What tools/preview.py shows (docs/PREVIEW.md): a made-up waste calendar and the answer of calendar.get_events the
+# tile asks for. Moments are made from the time of the render ("{now+2d}").
+tiles:
+  - tile: overview
+    name: Waste
+    entity: calendar.waste
+    sizes: [4x1, 2x2, 1x2, 3x1]
+  - tile: overview
+    name: Named kinds
+    entity: calendar.waste
+    options: { match1: Papier, label1: Papier, match2: Rest, label2: Restmüll, match3: Gelb, label3: Gelber Sack }
+    sizes: [3x1]
+
+states:
+  calendar.waste:
+    state: "off"
+    attributes:
+      friendly_name: Waste collection
+      message: Papier
+      start_time: "{now+2d}"
+      end_time: "{now+3d}"
+
+commands:
+  "call_service:calendar.get_events":
+    calendar.waste:
+      events:
+        - { start: "{now+2d}", end: "{now+3d}", summary: Papier }
+        - { start: "{now+9d}", end: "{now+10d}", summary: Restmüll }
+        - { start: "{now+16d}", end: "{now+17d}", summary: Gelber Sack }
+        - { start: "{now+23d}", end: "{now+24d}", summary: Restmüll }
+        - { start: "{now+27d}", end: "{now+28d}", summary: Schadstoffmobil }
+        - { start: "{now+30d}", end: "{now+31d}", summary: Papier }

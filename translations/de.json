@@ -1,0 +1,36 @@
+{
+  "_meta": {
+    "name": "Deutsch"
+  },
+  "screen": {
+    "today": "Heute",
+    "choose": "Kalender wählen",
+    "waiting": "Kalender wird gefragt",
+    "failed": "Der Kalender antwortet nicht",
+    "none": "Nichts geplant"
+  },
+  "app": {
+    "name": "Müll-Übersicht",
+    "summary": "Alle Müllarten nebeneinander, mit den Tagen bis zur nächsten Abholung, aus einem Kalender.",
+    "input_calendar": "Müllkalender",
+    "input_calendar_hint": "Der Kalender mit den Abholterminen (Waste Collection Schedule, ein lokaler Kalender, ...).",
+    "tile_name": "Müll-Übersicht",
+    "tile_example": "Papier in 2 Tagen · Restmüll in 9 Tagen",
+    "days": "Tage voraus",
+    "days_hint": "Wie weit voraus nach Abholungen gesucht wird.",
+    "drop_after": "Heutige Abholung bis",
+    "drop_after_hint": "Ab dieser Stunde macht eine Abholung von heute Platz für die nächste ihrer Art. 24 behält sie den ganzen Tag.",
+    "match1": "Art 1: Wort",
+    "match_hint": "Ein Wort im Kalendertermin, z. B. Papier oder Gelber. Alle Arten leer lassen, dann wird jeder Terminname eine eigene Art.",
+    "label1": "Art 1: Name",
+    "label_hint": "Wie die Kachel sie nennt. Leer nimmt den Namen des Termins.",
+    "match2": "Art 2: Wort",
+    "label2": "Art 2: Name",
+    "match3": "Art 3: Wort",
+    "label3": "Art 3: Name",
+    "match4": "Art 4: Wort",
+    "label4": "Art 4: Name",
+    "match5": "Art 5: Wort",
+    "label5": "Art 5: Name"
+  }
+}

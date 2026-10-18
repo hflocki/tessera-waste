@@ -1,0 +1,51 @@
+# Waste overview: every kind of waste of a calendar side by side, each with its icon, its name and how many days until it
+# goes out next. Every field is explained in docs/MANIFEST.md of tessera-plugins.
+id: waste_overview
+version: 0.1.0
+# 0.9: one-line labels.
+api: "0.9"
+icon: recycle
+maintainer: hflocki
+license: MIT
+stage: beta
+topics: [home, calendar]
+requires:
+  esphome: 2026.6.2
+boards: any
+flash_kb: 12
+
+permissions:
+  # The coming collections, asked of Home Assistant through the app.
+  ha_commands: ["call_service:calendar.get_events"]
+
+inputs:
+  # The calendar the tile asks; also the tile's own entity in the inspector, which firmware up to 0.56.0 does not
+  # hand to a tile of a calendar.
+  - { id: calendar, kind: entity, domains: [calendar], scope: screen, label: input_calendar, hint: input_calendar_hint }
+
+tiles:
+  - id: overview
+    name: tile_name
+    icon: recycle
+    sizes: { min: 1x1, max: 6x3 }
+    # Up to eight kinds of three labels, a note, and 24 coming collections of fixed fields.
+    memory: 4400
+    # The calendar: the tile is sent again whenever its next event changes, and asks for the coming ones then.
+    domains: [calendar]
+    attributes: [message, start_time]
+    example: tile_example
+    options:
+      - { id: days, kind: number, min: 7, max: 60, step: 1, unit: d, default: 35, label: days, hint: days_hint }
+      - { id: drop_after, kind: number, min: 0, max: 24, step: 1, unit: h, default: 10, label: drop_after,
+          hint: drop_after_hint }
+      # Up to five kinds by a word in the calendar's event; empty: every event's own name is a kind.
+      - { id: match1, kind: text, label: match1, hint: match_hint }
+      - { id: label1, kind: text, label: label1, hint: label_hint }
+      - { id: match2, kind: text, label: match2 }
+      - { id: label2, kind: text, label: label2 }
+      - { id: match3, kind: text, label: match3 }
+      - { id: label3, kind: text, label: label3 }
+      - { id: match4, kind: text, label: match4 }
+      - { id: label4, kind: text, label: label4 }
+      - { id: match5, kind: text, label: match5 }
+      - { id: label5, kind: text, label: label5 }

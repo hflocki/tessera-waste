@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.2
+- A word with an umlaut (Restmülltonne) now finds its events however the calendar writes the umlaut.
+
 ## 0.1.1
 - Kind 1 to 5 only rename and group now: events that match none of them still show, under their own name.
 

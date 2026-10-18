@@ -39,9 +39,28 @@ static bool parse_start(const char *text, int32_t &day, int8_t &hour) {
   return true;
 }
 
+// A text folded for comparing words: lowercase, umlauts as their plain vowel, written either way (one character, or a
+// vowel followed by a combining diaeresis, as some calendars send them), and ß as ss.
 static std::string lower(const char *text) {
-  std::string out(text ? text : "");
-  std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { return std::tolower(c); });
+  std::string out;
+  for (const char *p = text ? text : ""; *p; ++p) {
+    const unsigned char c = static_cast<unsigned char>(*p);
+    if (c == 0xCC && static_cast<unsigned char>(p[1]) == 0x88) {  // U+0308 combining diaeresis: drop it
+      ++p;
+      continue;
+    }
+    if (c == 0xC3 && p[1]) {
+      const unsigned char n = static_cast<unsigned char>(p[1]);
+      const char *plain = n == 0xA4 || n == 0x84 ? "a" : n == 0xB6 || n == 0x96 ? "o" : n == 0xBC || n == 0x9C ? "u"
+                          : n == 0x9F ? "ss" : nullptr;
+      if (plain) {
+        out += plain;
+        ++p;
+        continue;
+      }
+    }
+    out += static_cast<char>(std::tolower(c));
+  }
   return out;
 }
 
@@ -64,7 +83,7 @@ static Look look_of(const std::string &low) {
   if (has({"papier", "paper", "pappe", "karton", "cardboard"})) return {0xF03D3, theme::MARK_BLUE};     // package
   if (has({"gelb", "plastik", "plastic", "verpackung", "wertstoff", "pmd", "packag"}))
     return {0xF044C, theme::MARK_AMBER};  // recycle
-  if (has({"bio", "grün", "gruen", "organic", "garden", "garten", "kompost", "compost", "gft", "laub", "schnitt", "strauch"}))
+  if (has({"bio", "grun", "gruen", "organic", "garden", "garten", "kompost", "compost", "gft", "laub", "schnitt", "strauch"}))
     return {0xF032A, theme::MARK_GREEN};  // leaf
   if (has({"schadstoff", "sonder", "hazard", "chemisch", "kca"})) return {0xF05D6, theme::MARK_PURPLE};  // alert
   if (has({"glas", "glass"})) return {0xF044C, theme::MARK_PURPLE};                                      // recycle

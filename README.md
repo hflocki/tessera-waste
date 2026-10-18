@@ -26,9 +26,9 @@ work.
 - **Days ahead**: how far ahead to look, 35 days by default. A kind collected less often than that does not show.
 - **Today's collection until**: from this hour on (10 by default) a collection of today makes way for the next one of
   its kind, as the bin is out already. 24 keeps it all day.
-- **Kind 1 to 5, word and name**: a word in the event's name, and what the tile calls it. `Gelb` with the name
-  `Gelber Sack` puts "Gelbe Tonne" and "Gelber Sack" together. With any word filled in, the tile shows only the kinds
-  you named. Empty names take the event's own name.
+- **Kind 1 to 5, word and name**: renames and groups kinds. Every event whose name holds the word shows under the
+  name: `Rest` with the name `Restmüll` turns "Restmülltonne 2-wöchentlich" into "Restmüll", and `Gelb` with
+  `Gelber Sack` puts "Gelbe Tonne" and "Gelber Sack" together. Every other event keeps its own name.
 
 ## Good to know
 

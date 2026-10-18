@@ -208,17 +208,14 @@ class OverviewTile : public tessera::Tile {
       const Event &e = events_[i];
       if (e.day < today) continue;
       if (e.day == today && drop_after_ < 24 && t.hour >= drop_after_) continue;
-      // Its kind: the first match whose word is in the event's name, or (without matches) the name itself.
+      // Its kind: the first match whose word is in the event's name, under that match's name; any other event is a
+      // kind of its own, under its own name.
       const std::string low = lower(e.summary);
       const char *name = nullptr;
-      if (match_count_ == 0) {
-        name = e.summary;
-      } else {
-        for (int m = 0; m < match_count_ && !name; ++m)
-          if (low.find(matches_[m].word) != std::string::npos)
-            name = matches_[m].label[0] ? matches_[m].label : e.summary;
-        if (!name) continue;
-      }
+      for (int m = 0; m < match_count_ && !name; ++m)
+        if (low.find(matches_[m].word) != std::string::npos)
+          name = matches_[m].label[0] ? matches_[m].label : e.summary;
+      if (!name) name = e.summary;
       int k = 0;
       while (k < count && strcmp(kinds[k].name, name) != 0) ++k;
       if (k < count) {

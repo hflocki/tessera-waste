@@ -11,6 +11,9 @@ tiles:
     options: { match1: Papier, label1: Papier, match2: Rest, label2: Restmüll, match3: Gelb, label3: Gelber Sack }
     sizes: [3x1]
 
+cards:
+  - { card: upcoming, entity: calendar.waste }
+
 states:
   calendar.waste:
     state: "off"

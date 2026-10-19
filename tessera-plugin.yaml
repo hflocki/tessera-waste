@@ -1,7 +1,7 @@
 # Waste overview: every kind of waste of a calendar side by side, each with its icon, its name and how many days until it
 # goes out next. Every field is explained in docs/MANIFEST.md of tessera-plugins.
 id: waste_overview
-version: 0.1.2
+version: 0.2.0
 # 0.9: one-line labels.
 api: "0.9"
 icon: recycle
@@ -12,7 +12,7 @@ topics: [home, calendar]
 requires:
   esphome: 2026.6.2
 boards: any
-flash_kb: 12
+flash_kb: 16
 
 permissions:
   # The coming collections, asked of Home Assistant through the app.
@@ -49,3 +49,7 @@ tiles:
       - { id: label4, kind: text, label: label4 }
       - { id: match5, kind: text, label: match5 }
       - { id: label5, kind: text, label: label5 }
+
+cards:
+  # A tap on the tile: the coming collections of five weeks, named as on the tile.
+  - { id: upcoming, name: card_name }

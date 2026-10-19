@@ -90,6 +90,15 @@ static Look look_of(const std::string &low) {
   return {0xF0A79, theme::MUTED};                                                                        // trash can
 }
 
+// The kind an event belongs to: the first word found in its name gives that word's name (or the event's own, without a
+// name); any other event is a kind of its own, under its own name.
+static const char *kind_name(const char *summary, const KindWord *words, int count) {
+  const std::string low = lower(summary);
+  for (int m = 0; m < count; ++m)
+    if (low.find(words[m].word) != std::string::npos) return words[m].label[0] ? words[m].label : summary;
+  return summary;
+}
+
 // ---- The tile ----
 
 class OverviewTile : public tessera::Tile {
@@ -100,6 +109,7 @@ class OverviewTile : public tessera::Tile {
   void create(const tessera::TileContext &c) override {
     width_ = c.width;
     height_ = c.height;
+    tile_ = c.tile;
     // The calendar of the inspector, or (firmware up to 0.56.0 hands a calendar tile none) the plugin's input.
     snprintf(calendar_, sizeof calendar_, "%s", c.entity && *c.entity ? c.entity : plugin_->calendar());
     days_ = c.options["days"] | 35;
@@ -111,7 +121,7 @@ class OverviewTile : public tessera::Tile {
       const std::string word = lower(c.options[key] | "");
       if (word.empty()) continue;
       snprintf(key, sizeof key, "label%d", i);
-      Match &m = matches_[match_count_++];
+      KindWord &m = matches_[match_count_++];
       snprintf(m.word, sizeof m.word, "%s", word.c_str());
       snprintf(m.label, sizeof m.label, "%s", c.options[key] | "");
     }
@@ -187,11 +197,18 @@ class OverviewTile : public tessera::Tile {
     ui::set_color(note_, theme::MUTED);
   }
 
+  // A tap opens the coming collections, named as on this tile.
+  void on_tap() override {
+    if (!calendar_[0]) return;
+    CardSource &src = plugin_->card_source;
+    snprintf(src.calendar, sizeof src.calendar, "%s", calendar_);
+    src.word_count = match_count_;
+    for (int i = 0; i < match_count_; ++i) src.words[i] = matches_[i];
+    src.drop_after = drop_after_;
+    tessera::open_card(plugin_->plugin_id(), "upcoming", calendar_, tile_);
+  }
+
  private:
-  struct Match {
-    char word[48];
-    char label[48];
-  };
   struct Event {
     char summary[48];
     int32_t day;
@@ -227,14 +244,8 @@ class OverviewTile : public tessera::Tile {
       const Event &e = events_[i];
       if (e.day < today) continue;
       if (e.day == today && drop_after_ < 24 && t.hour >= drop_after_) continue;
-      // Its kind: the first match whose word is in the event's name, under that match's name; any other event is a
-      // kind of its own, under its own name.
+      const char *name = kind_name(e.summary, matches_, match_count_);
       const std::string low = lower(e.summary);
-      const char *name = nullptr;
-      for (int m = 0; m < match_count_ && !name; ++m)
-        if (low.find(matches_[m].word) != std::string::npos)
-          name = matches_[m].label[0] ? matches_[m].label : e.summary;
-      if (!name) name = e.summary;
       int k = 0;
       while (k < count && strcmp(kinds[k].name, name) != 0) ++k;
       if (k < count) {
@@ -325,8 +336,8 @@ class OverviewTile : public tessera::Tile {
   int width_ = 0, height_ = 0;
   bool across_ = true;
   char calendar_[64]{};
-  int days_ = 35, drop_after_ = 10;
-  Match matches_[MAX_MATCHES]{};
+  int days_ = 35, drop_after_ = 10, tile_ = -1;
+  KindWord matches_[MAX_MATCHES]{};
   int match_count_ = 0;
   Event events_[MAX_EVENTS]{};
   int event_count_ = 0;
@@ -336,15 +347,152 @@ class OverviewTile : public tessera::Tile {
   lv_obj_t *note_{};
 };
 
+// ---- The card: the coming collections of five weeks, one row each ----
+
+class UpcomingCard : public tessera::Card {
+ public:
+  explicit UpcomingCard(WasteOverview *plugin) : plugin_(plugin), src_(plugin->card_source) {}
+  ~UpcomingCard() override {
+    if (plugin_->open_card_ == this) plugin_->open_card_ = nullptr;
+  }
+
+  void open(const tessera::CardContext &c) override {
+    width_ = c.width;
+    height_ = c.height;
+    plugin_->open_card_ = this;
+    // Opened without a tile of this plugin (from the settings, or a tile of another kind): the calendar it was opened
+    // for, else the plugin's own, with no words and today's collection until 10 o'clock.
+    if (!src_.calendar[0]) {
+      snprintf(src_.calendar, sizeof src_.calendar, "%s", c.entity && *c.entity ? c.entity : plugin_->calendar());
+      src_.word_count = 0;
+      src_.drop_after = 10;
+    }
+    // A row: the icon, the kind and its date under it, and how far away at the right.
+    name_h_ = ui::line_height(Font::BODY_LARGE);
+    body_h_ = ui::line_height(Font::BODY);
+    icon_h_ = ui::line_height(Font::ICON_SMALL);
+    row_h_ = name_h_ + body_h_;
+    gap_ = ui::px(ui::large() ? 12 : 8);
+    rows_ = std::max(1, std::min(MAX_CARD_ROWS, (height_ + gap_) / (row_h_ + gap_)));
+    const int when_w = std::min(width_ / 3, ui::text_width("00 00000", Font::BODY_LARGE) + ui::px(20));
+    const int text_x = icon_h_ + ui::px(10);
+    for (int r = 0; r < rows_; ++r) {
+      Row &row = row_[r];
+      const int y = r * (row_h_ + gap_);
+      row.icon = ui::label(c.parent, Font::ICON_SMALL, theme::MUTED);
+      place(row.icon, 0, y + (row_h_ - icon_h_) / 2, icon_h_, icon_h_);
+      row.name = ui::label(c.parent, Font::BODY_LARGE, theme::INK);
+      place(row.name, text_x, y, width_ - text_x - when_w - ui::px(8), name_h_);
+      row.date = ui::label(c.parent, Font::BODY, theme::MUTED);
+      place(row.date, text_x, y + name_h_, width_ - text_x - when_w - ui::px(8), body_h_);
+      row.when = ui::label(c.parent, Font::BODY_LARGE, theme::INK);
+      lv_obj_set_style_text_align(row.when, LV_TEXT_ALIGN_RIGHT, 0);
+      place(row.when, width_ - when_w, y + (row_h_ - name_h_) / 2, when_w, name_h_);
+    }
+    note_ = ui::label(c.parent, Font::BODY_LARGE, theme::MUTED);
+    place(note_, 0, 0, width_, name_h_);
+    ui::set_text(note_, plugin_->text("waiting"));
+
+    JsonDocument request;
+    request["ask"] = "call_service:calendar.get_events";
+    request["data"]["entity_id"] = src_.calendar;
+    request["data"]["duration"]["days"] = CARD_DAYS;
+    asked_ = tessera::send(plugin_, request.as<JsonObjectConst>());
+    if (!asked_) ui::set_text(note_, plugin_->text("failed"));
+  }
+
+  // The answer: {"re", "ok", "result": {"calendar.x": {"events": [{"start", "summary"}, ...]}}}.
+  void answer(JsonObjectConst message) {
+    if (!asked_ || (message["re"] | 0u) != asked_) return;
+    asked_ = 0;
+    if (!(message["ok"] | false)) {
+      ui::set_text(note_, plugin_->text("failed"));
+      return;
+    }
+    count_ = 0;
+    for (JsonObjectConst e : message["result"][src_.calendar]["events"].as<JsonArrayConst>()) {
+      if (count_ >= MAX_EVENTS) break;
+      Entry &en = entries_[count_];
+      int8_t hour = -1;
+      if (!parse_start(e["start"] | "", en.day, hour)) continue;
+      snprintf(en.name, sizeof en.name, "%s", kind_name(e["summary"] | "", src_.words, src_.word_count));
+      ++count_;
+    }
+    std::stable_sort(entries_, entries_ + count_, [](const Entry &a, const Entry &b) { return a.day < b.day; });
+    answered_ = true;
+    tessera::refresh();
+  }
+
+  void on_tick(uint32_t now) override {
+    if (!answered_) return;
+    if (!now) return;
+    const tessera::LocalTime t = tessera::local_time(now);
+    const int32_t today = civil_days(t.year, static_cast<unsigned>(t.month), static_cast<unsigned>(t.day));
+    int r = 0;
+    for (int i = 0; i < count_ && r < rows_; ++i) {
+      const Entry &en = entries_[i];
+      if (en.day < today) continue;
+      if (en.day == today && src_.drop_after < 24 && t.hour >= src_.drop_after) continue;
+      const int32_t days = en.day - today;
+      const Look look = look_of(lower(en.name));
+      Row &row = row_[r++];
+      ui::set_text(row.icon, ui::icon(look.icon));
+      ui::set_color(row.icon, look.colour);
+      ui::set_text(row.name, en.name);
+      ui::set_color(row.name, theme::INK);
+      ui::set_text(row.date, tessera::date_text(static_cast<uint32_t>(en.day) * 86400u + 43200u));
+      ui::set_text(row.when, days == 0 ? std::string(plugin_->text("today")) : tessera::days_text(days));
+      ui::set_color(row.when, days <= 1 ? theme::INK : theme::MUTED);
+    }
+    ui::set_text(note_, r == 0 ? plugin_->text("none") : "");
+    for (; r < rows_; ++r) {
+      ui::set_text(row_[r].icon, "");
+      ui::set_text(row_[r].name, "");
+      ui::set_text(row_[r].date, "");
+      ui::set_text(row_[r].when, "");
+    }
+  }
+
+  void on_theme() override { ui::set_color(note_, theme::MUTED); }
+
+ private:
+  static constexpr int MAX_CARD_ROWS = 10;
+  static constexpr int CARD_DAYS = 35;
+  struct Entry {
+    char name[48];
+    int32_t day;
+  };
+  struct Row {
+    lv_obj_t *icon{}, *name{}, *date{}, *when{};
+  };
+
+  static void place(lv_obj_t *obj, int x, int y, int w, int h) {
+    lv_obj_set_size(obj, std::max(1, w), std::max(1, h));
+    lv_obj_set_pos(obj, x, y);
+  }
+
+  WasteOverview *plugin_;
+  CardSource src_;
+  int width_ = 0, height_ = 0, name_h_ = 0, body_h_ = 0, icon_h_ = 0, row_h_ = 0, gap_ = 0, rows_ = 0;
+  uint32_t asked_ = 0;
+  bool answered_ = false;
+  Entry entries_[MAX_EVENTS]{};
+  int count_ = 0;
+  Row row_[MAX_CARD_ROWS];
+  lv_obj_t *note_{};
+};
+
 // ---- The plugin ----
 
 void WasteOverview::setup() {
   add_tile("overview", [this]() { return new OverviewTile(this); });
+  add_card("upcoming", [this]() { return new UpcomingCard(this); });
 }
 
 void WasteOverview::on_message(JsonObjectConst message) {
   for (OverviewTile *tile : tiles_)
     if (tile) tile->answer(message);
+  if (open_card_) open_card_->answer(message);
 }
 
 void WasteOverview::attach(OverviewTile *tile) {

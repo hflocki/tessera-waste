@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0
+- A tap on the tile opens the coming collections of five weeks, with their date and how far away, named as on
+  the tile.
+
 ## 0.1.2
 - A word with an umlaut (Restmülltonne) now finds its events however the calendar writes the umlaut.
 

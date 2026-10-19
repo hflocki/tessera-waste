@@ -30,6 +30,11 @@ work.
   name: `Rest` with the name `Restmüll` turns "Restmülltonne 2-wöchentlich" into "Restmüll", and `Gelb` with
   `Gelber Sack` puts "Gelbe Tonne" and "Gelber Sack" together. Every other event keeps its own name.
 
+## Coming collections
+
+A tap on the tile opens a card with the coming collections of five weeks: each with its icon, its name (renamed as on
+the tile), its date and how far away.
+
 ## Good to know
 
 - The tile asks Home Assistant for the coming events through Tessera (`calendar.get_events`): when it appears, when

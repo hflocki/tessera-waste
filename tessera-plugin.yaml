@@ -1,7 +1,7 @@
 # Waste overview: every kind of waste of a calendar side by side, each with its icon, its name and how many days until it
 # goes out next. Every field is explained in docs/MANIFEST.md of tessera-plugins.
 id: waste_overview
-version: 0.2.0
+version: 1.2.0
 # 0.9: one-line labels.
 api: "0.9"
 icon: recycle

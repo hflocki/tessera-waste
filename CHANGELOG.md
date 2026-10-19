@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0
+## 1.2.0
 - A tap on the tile opens the coming collections of five weeks, with their date and how far away, named as on
   the tile.
 

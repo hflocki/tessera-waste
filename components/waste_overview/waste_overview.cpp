@@ -1,5 +1,6 @@
 #include "waste_overview.h"
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <cstdio>
 #include <climits>
@@ -9,7 +10,29 @@
 namespace esphome::waste_overview {
 
 using tessera::Font;
+using tessera::Tone;
 namespace ui = tessera::ui;
+
+// ---- Readable colours ---------------------------------------------------------------------------------------------
+
+// A colour's luminance and the WCAG contrast of two: amber or yellow words on the light look's white card fall under
+// what a person reads, so there they take the ink instead; on the dark look they keep their colour.
+static float luminance(lv_color_t c) {
+  auto channel = [](uint8_t v) {
+    const float s = v / 255.0f;
+    return s <= 0.03928f ? s / 12.92f : std::pow((s + 0.055f) / 1.055f, 2.4f);
+  };
+  return 0.2126f * channel(c.red) + 0.7152f * channel(c.green) + 0.0722f * channel(c.blue);
+}
+static bool reads_on_card(lv_color_t c) {
+  const float a = luminance(c), b = luminance(ui::color(theme::CARD));
+  return (std::max(a, b) + 0.05f) / (std::min(a, b) + 0.05f) >= 3.0f;
+}
+// A label (words or an icon) in a tone's or a role's colour where that reads on the card, else in the ink.
+static void set_readable(lv_obj_t *label, tessera::Tone tone, theme::Role role) {
+  if (reads_on_card(ui::tone_color(tone, role))) ui::set_tone(label, tone, role);
+  else ui::set_color(label, theme::INK);
+}
 
 static constexpr int MAX_EVENTS = 24;  // coming collections a tile keeps
 static constexpr int MAX_KINDS = 8;    // kinds a tile shows at most
@@ -319,7 +342,7 @@ class OverviewTile : public tessera::Tile {
 
   void fill(Slot &s, const Kind &k, bool with_icon) {
     ui::set_text(s.icon, with_icon ? ui::icon(k.look.icon) : "");
-    ui::set_color(s.icon, k.look.colour);
+    set_readable(s.icon, Tone::NORMAL, k.look.colour);
     ui::set_text(s.name, k.name);
     ui::set_color(s.name, theme::INK);
     ui::set_text(s.when, when_text(k.days));
@@ -437,7 +460,7 @@ class UpcomingCard : public tessera::Card {
       const Look look = look_of(lower(en.name));
       Row &row = row_[r++];
       ui::set_text(row.icon, ui::icon(look.icon));
-      ui::set_color(row.icon, look.colour);
+      set_readable(row.icon, Tone::NORMAL, look.colour);
       ui::set_text(row.name, en.name);
       ui::set_color(row.name, theme::INK);
       ui::set_text(row.date, tessera::date_text(static_cast<uint32_t>(en.day) * 86400u + 43200u));

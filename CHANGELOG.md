@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.1
+- Amber and yellow words and icons take the ink on the light look, where they were too faint to read; the dark look keeps its colours.
+
 ## 1.2.0
 - A tap on the tile opens the coming collections of five weeks, with their date and how far away, named as on
   the tile.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.2
+- Icons on a low wide tile (4x1): the small icon above the name where it fits, else in front of the name, instead of
+  none at all (#2).
+- The events are found when Home Assistant's answer names the calendar differently from its entity id, so the tile no
+  longer says "Nothing planned" for a calendar with events (#3).
+- The log says why the calendar does not answer (the error of Home Assistant or the app) and which calendars an answer
+  held when none matched (#1).
+- A change of the calendar's next event asks for the coming collections at once again; the start time comes as a text.
 ## 1.2.1
 - Amber and yellow words and icons take the ink on the light look, where they were too faint to read; the dark look keeps its colours.
 

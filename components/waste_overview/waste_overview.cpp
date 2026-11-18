@@ -6,8 +6,12 @@
 #include <climits>
 #include <cstring>
 #include <string>
+#include <strings.h>
+#include "esphome/core/log.h"
 
 namespace esphome::waste_overview {
+
+static const char *const TAG = "waste_overview";
 
 using tessera::Font;
 using tessera::Tone;
@@ -122,6 +126,50 @@ static const char *kind_name(const char *summary, const KindWord *words, int cou
   return summary;
 }
 
+// ---- The answer of calendar.get_events ----
+
+// The events of the calendar asked for: {"result": {"calendar.x": {"events": [...]}}}. The answer's key may not match the
+// entity id letter for letter (case, how the app writes it), and only one calendar is ever asked for: without an exact
+// key, take the one calendar the answer holds, or the one whose key matches ignoring case.
+static JsonArrayConst events_of(JsonObjectConst message, const char *calendar) {
+  JsonObjectConst result = message["result"].as<JsonObjectConst>();
+  JsonArrayConst exact = result[calendar]["events"].as<JsonArrayConst>();
+  if (!exact.isNull()) return exact;
+  JsonArrayConst only;
+  int with_events = 0;
+  for (JsonPairConst kv : result) {
+    JsonArrayConst events = kv.value()["events"].as<JsonArrayConst>();
+    if (events.isNull()) continue;
+    if (strcasecmp(kv.key().c_str(), calendar) == 0) return events;
+    only = events;
+    ++with_events;
+  }
+  if (with_events == 1) {
+    ESP_LOGD(TAG, "Answer for %s came under another key; using it", calendar);
+    return only;
+  }
+  // Nothing usable: say what came, so a log shows why the tile stays empty.
+  std::string keys;
+  for (JsonPairConst kv : result) keys += std::string(keys.empty() ? "" : ", ") + kv.key().c_str();
+  ESP_LOGW(TAG, "No events for %s in the answer (keys: %s)", calendar, keys.empty() ? "none" : keys.c_str());
+  return JsonArrayConst();
+}
+
+// Logs why a question failed (not_allowed, failed, ...), as the tile only says that the calendar does not answer.
+static void log_failure(JsonObjectConst message, const char *calendar) {
+  ESP_LOGW(TAG, "calendar.get_events for %s failed: %s", calendar, message["error"] | "no reason given");
+}
+
+// The calendar's next start as a number to compare: Home Assistant sends start_time as a text
+// ("2026-11-20 00:00:00"); a number is taken as it is.
+static uint32_t start_key(JsonVariantConst value) {
+  if (value.is<uint32_t>()) return value.as<uint32_t>();
+  int32_t day = 0;
+  int8_t hour = -1;
+  if (!parse_start(value | "", day, hour)) return 0;
+  return static_cast<uint32_t>(day) * 32u + static_cast<uint32_t>(hour + 1);
+}
+
 // ---- The tile ----
 
 class OverviewTile : public tessera::Tile {
@@ -150,9 +198,26 @@ class OverviewTile : public tessera::Tile {
     }
     // Side by side on a wide tile, one under the other on a tall one.
     across_ = width_ * 10 >= height_ * 14;
+    // On a wide tile the icon stands above the name when the large icon fits, else the small one; on a tile too low for
+    // that (a 4x1) it stands in front of the name. Only a tile too low even for that goes without.
+    icon_font_ = Font::ICON_SMALL;
+    icon_mode_ = IconMode::BESIDE;
+    if (across_) {
+      const int name_h = ui::line_height(Font::BODY_LARGE), when_h = ui::line_height(Font::BODY);
+      if (ui::line_height(Font::ICON) + name_h + when_h <= height_) {
+        icon_font_ = Font::ICON;
+        icon_mode_ = IconMode::ABOVE;
+      } else if (ui::line_height(Font::ICON_SMALL) + name_h + when_h <= height_) {
+        icon_mode_ = IconMode::ABOVE;
+      } else if (std::max(ui::line_height(Font::ICON_SMALL), name_h) + when_h <= height_) {
+        icon_mode_ = IconMode::IN_FRONT;
+      } else {
+        icon_mode_ = IconMode::NONE;
+      }
+    }
     for (int i = 0; i < MAX_KINDS; ++i) {
       Slot &s = slots_[i];
-      s.icon = ui::label(c.parent, across_ ? Font::ICON : Font::ICON_SMALL, theme::MUTED);
+      s.icon = ui::label(c.parent, icon_font_, theme::MUTED);
       s.name = ui::label(c.parent, across_ ? Font::BODY_LARGE : Font::TITLE, theme::INK);
       s.when = ui::label(c.parent, Font::BODY, theme::MUTED);
       if (across_) {
@@ -171,7 +236,7 @@ class OverviewTile : public tessera::Tile {
 
   // The calendar's next event changed (or the tile is new): ask for the coming ones again.
   void on_state(JsonObjectConst data) override {
-    const uint32_t next = data["attributes"]["start_time"] | 0u;
+    const uint32_t next = start_key(data["attributes"]["start_time"]);
     if (next != next_ || (!answered_ && !asked_)) {
       next_ = next;
       ask();
@@ -183,19 +248,21 @@ class OverviewTile : public tessera::Tile {
     if (!asked_ || (message["re"] | 0u) != asked_) return;
     asked_ = 0;
     if (!(message["ok"] | false)) {
+      log_failure(message, calendar_);
       failed_ = true;
       return;
     }
     failed_ = false;
     answered_ = true;
     event_count_ = 0;
-    for (JsonObjectConst e : message["result"][calendar_]["events"].as<JsonArrayConst>()) {
+    for (JsonObjectConst e : events_of(message, calendar_)) {
       if (event_count_ >= MAX_EVENTS) break;
       Event &ev = events_[event_count_];
       if (!parse_start(e["start"] | "", ev.day, ev.hour)) continue;
       snprintf(ev.summary, sizeof ev.summary, "%s", e["summary"] | "");
       ++event_count_;
     }
+    ESP_LOGD(TAG, "%s: %d coming collections", calendar_, event_count_);
     tessera::refresh();
   }
 
@@ -301,7 +368,7 @@ class OverviewTile : public tessera::Tile {
   }
 
   void paint(const Kind *kinds, int count) {
-    const int icon_h = ui::line_height(across_ ? Font::ICON : Font::ICON_SMALL);
+    const int icon_h = ui::line_height(icon_font_);
     const int name_h = ui::line_height(across_ ? Font::BODY_LARGE : Font::TITLE);
     const int when_h = ui::line_height(Font::BODY);
     int shown;
@@ -309,16 +376,28 @@ class OverviewTile : public tessera::Tile {
       // As many columns as leave each at least 16 mm; the icon goes on a tile too low for it.
       shown = std::max(1, std::min(count, width_ / std::max(1, ui::mm(16))));
       const int col = width_ / shown;
-      const bool with_icon = icon_h + name_h + when_h <= height_;
-      const int block = (with_icon ? icon_h : 0) + name_h + when_h;
+      const bool above = icon_mode_ == IconMode::ABOVE;
+      const int name_row = icon_mode_ == IconMode::IN_FRONT ? std::max(icon_h, name_h) : name_h;
+      const int block = (above ? icon_h : 0) + name_row + when_h;
       const int top = std::max(0, (height_ - block) / 2);
       for (int i = 0; i < shown; ++i) {
         Slot &s = slots_[i];
         const int x = i * col;
-        place(s.icon, x, top, col, icon_h);
-        place(s.name, x + ui::px(2), top + (with_icon ? icon_h : 0), col - ui::px(4), name_h);
-        place(s.when, x, top + (with_icon ? icon_h : 0) + name_h, col, when_h);
-        fill(s, kinds[i], with_icon);
+        const int name_y = top + (above ? icon_h : 0);
+        if (icon_mode_ == IconMode::IN_FRONT) {
+          // The icon and the name as one group, centred in the column; a long name is cut, never the icon.
+          const int gap = ui::px(4);
+          const int room = std::max(1, col - icon_h - gap - ui::px(4));
+          const int name_w = std::min(room, ui::text_width(kinds[i].name, Font::BODY_LARGE) + ui::px(2));
+          const int x0 = x + std::max(0, (col - icon_h - gap - name_w) / 2);
+          place(s.icon, x0, name_y + (name_row - icon_h) / 2, icon_h, icon_h);
+          place(s.name, x0 + icon_h + gap, name_y + (name_row - name_h) / 2, name_w, name_h);
+        } else {
+          place(s.icon, x, top, col, icon_h);
+          place(s.name, x + ui::px(2), name_y, col - ui::px(4), name_h);
+        }
+        place(s.when, x, name_y + name_row, col, when_h);
+        fill(s, kinds[i], icon_mode_ != IconMode::NONE);
       }
     } else {
       // A row per kind: the icon, the name, and the days at the right.
@@ -358,6 +437,9 @@ class OverviewTile : public tessera::Tile {
   WasteOverview *plugin_;
   int width_ = 0, height_ = 0;
   bool across_ = true;
+  enum class IconMode { ABOVE, IN_FRONT, BESIDE, NONE };
+  IconMode icon_mode_ = IconMode::BESIDE;
+  Font icon_font_ = Font::ICON_SMALL;
   char calendar_[64]{};
   int days_ = 35, drop_after_ = 10, tile_ = -1;
   KindWord matches_[MAX_MATCHES]{};
@@ -429,11 +511,12 @@ class UpcomingCard : public tessera::Card {
     if (!asked_ || (message["re"] | 0u) != asked_) return;
     asked_ = 0;
     if (!(message["ok"] | false)) {
+      log_failure(message, src_.calendar);
       ui::set_text(note_, plugin_->text("failed"));
       return;
     }
     count_ = 0;
-    for (JsonObjectConst e : message["result"][src_.calendar]["events"].as<JsonArrayConst>()) {
+    for (JsonObjectConst e : events_of(message, src_.calendar)) {
       if (count_ >= MAX_EVENTS) break;
       Entry &en = entries_[count_];
       int8_t hour = -1;

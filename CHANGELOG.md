@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.4
+- The card with the coming collections makes room for how far away in the screen's language, so "In 12 Tagen" is no
+  longer cut to "In 12 Ta…".
+
 ## 1.2.3
 - A calendar whose entity id is longer than 63 characters (often one of Waste Collection Schedule) is asked for by its
   whole id: it was cut, so Home Assistant refused the question and the tile said "The calendar does not answer" or

@@ -479,7 +479,11 @@ class UpcomingCard : public tessera::Card {
     row_h_ = name_h_ + body_h_;
     gap_ = ui::px(ui::large() ? 12 : 8);
     rows_ = std::max(1, std::min(MAX_CARD_ROWS, (height_ + gap_) / (row_h_ + gap_)));
-    const int when_w = std::min(width_ / 3, ui::text_width("00 00000", Font::BODY_LARGE) + ui::px(20));
+    // How far away, measured in the screen's language ("In 32 Tagen" is longer than "In 32 days"): the widest of
+    // tomorrow, two digits and today, but never more than half the card.
+    int widest = ui::text_width(std::string(plugin_->text("today")), Font::BODY_LARGE);
+    for (int d : {1, 2, 88}) widest = std::max(widest, ui::text_width(tessera::days_text(d), Font::BODY_LARGE));
+    const int when_w = std::min(width_ / 2, widest + ui::px(8));
     const int text_x = icon_h_ + ui::px(10);
     for (int r = 0; r < rows_; ++r) {
       Row &row = row_[r];

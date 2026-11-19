@@ -440,7 +440,7 @@ class OverviewTile : public tessera::Tile {
   enum class IconMode { ABOVE, IN_FRONT, BESIDE, NONE };
   IconMode icon_mode_ = IconMode::BESIDE;
   Font icon_font_ = Font::ICON_SMALL;
-  char calendar_[64]{};
+  char calendar_[ENTITY_ID_LEN]{};
   int days_ = 35, drop_after_ = 10, tile_ = -1;
   KindWord matches_[MAX_MATCHES]{};
   int match_count_ = 0;

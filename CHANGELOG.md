@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.3
+- A calendar whose entity id is longer than 63 characters (often one of Waste Collection Schedule) is asked for by its
+  whole id: it was cut, so Home Assistant refused the question and the tile said "The calendar does not answer" or
+  "Nothing planned" (#1, #3).
+
 ## 1.2.2
 - Icons on a low wide tile (4x1): the small icon above the name where it fits, else in front of the name, instead of
   none at all (#2).

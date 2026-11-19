@@ -8,6 +8,10 @@ namespace esphome::waste_overview {
 class OverviewTile;
 class UpcomingCard;
 
+// Room for a whole entity id: Home Assistant allows up to 255 characters, and calendars of Waste Collection Schedule
+// are often longer than 63 (calendar.waste_collection_schedule_<the service's name>).
+static constexpr size_t ENTITY_ID_LEN = 256;
+
 // A word of the inspector that renames and groups kinds (Rest: Restmüll): the word folded for comparing, and the name.
 struct KindWord {
   char word[48];
@@ -17,7 +21,7 @@ struct KindWord {
 // What the card opened from a tile needs of that tile: its calendar, its words and from which hour today's
 // collection makes way.
 struct CardSource {
-  char calendar[64];
+  char calendar[ENTITY_ID_LEN];
   KindWord words[5];
   int word_count;
   int drop_after;
@@ -44,7 +48,7 @@ class WasteOverview : public Component, public tessera::Plugin {
  protected:
   static constexpr int MAX_TILES = 8;
   OverviewTile *tiles_[MAX_TILES]{};
-  char calendar_[64]{};
+  char calendar_[ENTITY_ID_LEN]{};
 };
 
 }  // namespace esphome::waste_overview
